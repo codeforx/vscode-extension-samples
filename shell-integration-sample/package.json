@@ -2,7 +2,7 @@
   "name": "shell-integration-sample",
   "displayName": "shell-integration-sample",
   "description": "",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -11,7 +11,24 @@
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
+  "browser": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "extension.createNewTerminal3",
+        "title": "Create New Terminal3",
+        "category": "Codigo"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "when": "isWeb || !isWeb",
+          "group": "navigation",
+          "command": "extension.createNewTerminal3"
+        }
+      ]
+    },
     "terminal": {
       "profiles": [
         {
