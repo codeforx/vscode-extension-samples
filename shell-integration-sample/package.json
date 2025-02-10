@@ -1,8 +1,8 @@
 {
-  "name": "shell-integration-sample",
-  "displayName": "shell-integration-sample",
+  "name": "echoshell",
+  "displayName": "echoshell",
   "description": "",
-  "version": "0.0.4",
+  "version": "0.0.8",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -10,30 +10,79 @@
     "Other"
   ],
   "activationEvents": [],
-  "main": "./out/extension.js",
   "browser": "./out/extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "extension.createNewTerminal3",
-        "title": "Create New Terminal3",
-        "category": "Codigo"
+        "command": "echoshell.createNewTerminal",
+        "title": "Create New Terminal",
+        "category": "EchoShell"
+      },
+      {
+        "command": "myExtension.showConfigArray",
+        "title": "Show Config Array",
+        "category": "EchoShell"
+      },
+      {
+        "command": "myExtension.addToConfigArray",
+        "title": "Add to Config Array",
+        "category": "EchoShell"
+      },
+      {
+        "command": "myExtension.editConfigArray",
+        "title": "Edit Config Array",
+        "category": "EchoShell"
       }
     ],
+    "configuration": {
+      "id": "echoshell",
+      "title": "EchoShell",
+      "properties": {
+        "echoshell.terminalEndpoints": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string" },
+            "description": { "type": "number" },
+            "alwaysShow": {"type": "boolean"}
+          },
+          "required": ["label"],
+          "description": "An array of WebSocket URL as QuickPickItem",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "menus": {
       "editor/title": [
         {
           "when": "isWeb || !isWeb",
           "group": "navigation",
-          "command": "extension.createNewTerminal3"
+          "command": "echoshell.createNewTerminal"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "myExtension.showConfigArray",
+          "title": "Show Config Array"
+        },
+        {
+          "command": "myExtension.addToConfigArray",
+          "title": "Add to Config Array"
+        },
+        {
+          "command": "myExtension.editConfigArray",
+          "title": "Edit Config Array"
         }
       ]
     },
     "terminal": {
       "profiles": [
         {
-          "id": "shell-integration-sample.track-editor-directory",
-          "title": "Track Editor Directory"
+          "id": "btwiuse.echoshell",
+          "title": "EchoShell"
         }
       ]
     }
