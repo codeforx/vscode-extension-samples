@@ -47,14 +47,17 @@ export function activate(context: vscode.ExtensionContext) {
       "echoshell.createNewTerminal",
       async () => {
         // Show an input box to the user
-        const userInput = await getOrAppendURL();
+        const selected = await getOrAppendURL();
 
-        if (!userInput) {
+        if (!selected) {
           return;
         }
 
         // Do something with the user input
-        if (!userInput.startsWith("wss://") && !userInput.startsWith("ws://")) {
+        if (
+          !selected.value.startsWith("wss://") &&
+          !selected.value.startsWith("ws://")
+        ) {
           vscode.window.showInformationMessage(
             `Invalid WS URL. Launching echo terminal...`,
           );
@@ -66,11 +69,9 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        const wss = new WebSocket(userInput);
-        wss.binaryType = "arraybuffer";
         vscode.window.createTerminal({
-          name: `WebShell`,
-          pty: wsPty(wss),
+          name: `PersistentWebShell`,
+          pty: PersistentPty(selected.value),
           location: vscode.TerminalLocation.Editor,
         });
       },
@@ -110,7 +111,7 @@ export function activate(context: vscode.ExtensionContext) {
           placeHolder: "Type here...",
         });
         if (!userInput) return;
-        await addMyConfigArray({ label: userInput });
+        await addMyConfigArray({ label: userInput, value: userInput });
         wssURL = userInput;
       } else {
         wssURL = selectedItem.label;
@@ -123,8 +124,10 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
-async function getOrAppendURL(): Promise<string | undefined> {
-  const items: vscode.QuickPickItem[] = [
+async function getOrAppendURL(): Promise<
+  { label: string; value: string } | undefined
+> {
+  const items = [
     ...getMyConfigArray(),
     {
       label: "ADD",
@@ -151,29 +154,30 @@ async function getOrAppendURL(): Promise<string | undefined> {
     );
     return;
   }
-  let wssURL = "";
+  let selected = undefined;
   if (selectedItem.label === "ADD") {
     const userInput = await vscode.window.showInputBox({
       prompt: "Please enter some text",
       placeHolder: "Type here...",
     });
     if (!userInput) return;
-    await addMyConfigArray({ label: userInput });
-    wssURL = userInput;
+    selected = { label: userInput, value: userInput };
+    await addMyConfigArray(selected);
   } else {
-    wssURL = selectedItem.label;
+    // TODO: use value only
+    selected = { label: selectedItem.label, value: selectedItem.value };
   }
-  return wssURL;
+  return selected;
 }
 
-function getMyConfigArray(): vscode.QuickPickItem[] {
+function getMyConfigArray(): any[] {
   const config = vscode.workspace.getConfiguration("echoshell");
   return config.get("terminalEndpoints") || [];
 }
 
-async function addMyConfigArray(newItem: vscode.QuickPickItem) {
+async function addMyConfigArray(newItem: any) {
   const config = vscode.workspace.getConfiguration("echoshell");
-  const oldEntries: vscode.QuickPickItem[] = config.get("terminalEndpoints") ||
+  const oldEntries: any[] = config.get("terminalEndpoints") ||
     [];
   await config.update(
     "terminalEndpoints",
@@ -181,6 +185,42 @@ async function addMyConfigArray(newItem: vscode.QuickPickItem) {
     vscode.ConfigurationTarget.Global,
   );
   vscode.window.showInformationMessage(`Item added: ${newItem.label}`);
+}
+
+function initWebsocket(ws: WebSocket, payload: any): Promise<void> {
+  const sendInitPayload = () => {
+    ws.send(enc.encode(payload + "\n"));
+  };
+  return new Promise((resolve, reject) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      // If the WebSocket is already open, resolve immediately
+      sendInitPayload();
+      resolve();
+    } else if (ws.readyState === WebSocket.CONNECTING) {
+      // Wait for the 'open' event
+      ws.addEventListener("open", () => {
+        sendInitPayload();
+        resolve();
+      }, { once: true });
+      // Handle connection errors
+      ws.addEventListener("error", (err: any) => {
+        vscode.window.showInformationMessage(
+          `WebSocket error ${err}. Press enter to reconnect.`,
+        );
+        reject(err);
+      }, { once: true });
+      // Handle connection closure before opening
+      ws.addEventListener("close", (event) => {
+        vscode.window.showInformationMessage(
+          "WebSocket closed. Press enter to reconnect.",
+        );
+        reject(new Error(`WebSocket closed before opening: ${event.reason}`));
+      }, { once: true });
+    } else {
+      // If the WebSocket is in CLOSING or CLOSED state, reject
+      reject(new Error(`WebSocket is in state ${ws.readyState}`));
+    }
+  });
 }
 
 function waitForWebSocketOpen(ws: WebSocket): Promise<void> {
@@ -210,66 +250,87 @@ function waitForWebSocketOpen(ws: WebSocket): Promise<void> {
   });
 }
 
-function wsPty(wss: WebSocket): vscode.Pseudoterminal {
-  const writeEmitter = new vscode.EventEmitter<string>();
-  let log = vscode.window.createOutputChannel("echoshell-wsPty");
+function newWss(wsUrl: string, writeEmitter: vscode.EventEmitter<string>) {
+  const wss = new WebSocket(wsUrl);
+  wss.binaryType = "arraybuffer";
   wss.addEventListener("message", ({ data }: any) => {
     const { str, obj } = ab2json(data);
-    let payload = JSON.stringify(obj);
+    const payload = JSON.stringify(obj);
     // log.appendLine(`recv: ${payload}`);
     if (obj[1] === "o") {
       writeEmitter.fire(obj[2]);
     }
   });
+  return wss;
+}
+
+const InitPayload = {
+  "version": 2,
+  "width": 80,
+  "height": 32,
+  "cmd": ["/bin/bash"],
+  "env": {
+    "TERM": "xterm-256color",
+    "FOO": "BAR",
+  },
+};
+
+function PersistentPty(wsUrl: string): vscode.Pseudoterminal {
+  const writeEmitter = new vscode.EventEmitter<string>();
+  let log = vscode.window.createOutputChannel("echoshell-PersistentPty");
+  let wss = newWss(wsUrl, writeEmitter);
+  let initPayload = "";
+  const open = (dimensions: vscode.TerminalDimensions | undefined) => {
+    initPayload = JSON.stringify({
+      ...InitPayload,
+      "width": dimensions!.columns,
+      "height": dimensions!.rows,
+    });
+    const onOpen = async () => {
+      try {
+        await initWebsocket(wss, initPayload);
+        log.appendLine(`open: ${initPayload}`);
+      } catch (err: any) {
+        log.appendLine(`WebSocket error: ${err.message}`);
+      }
+    };
+    onOpen();
+  };
+  const reOpen = async () => {
+    vscode.window.showInformationMessage(`Reconnecting...`);
+    wss = newWss(wsUrl, writeEmitter);
+    await initWebsocket(wss, initPayload);
+  };
+  const close = () => {
+    wss.close();
+    // log.appendLine(`close`);
+  };
+  const handleInput = (data: string) => {
+    const payload = JSON.stringify([0, "i", data]);
+    // log.appendLine(`handleInput: ${payload}`);
+    if (wss.readyState === WebSocket.OPEN) {
+      wss.send(enc.encode(payload + "\n"));
+    } else {
+      reOpen();
+    }
+  };
+  const setDimensions = (dimensions: vscode.TerminalDimensions) => {
+    const payload = JSON.stringify({
+      "version": 2,
+      "width": dimensions.columns,
+      "height": dimensions.rows,
+    });
+    // log.appendLine(`setDimensions: ${payload}`);
+    if (wss.readyState === WebSocket.OPEN) {
+      wss.send(enc.encode(payload + "\n"));
+    }
+  };
   return {
     onDidWrite: writeEmitter.event,
-    open: (initialDimensions: vscode.TerminalDimensions | undefined) => {
-      (async () => {
-        if (initialDimensions) {
-          const { columns, rows } = initialDimensions;
-          let payload = JSON.stringify({
-            "version": 2,
-            "width": columns,
-            "height": rows,
-            "cmd": ["/bin/bash"],
-            "env": {
-              "TERM": "xterm-256color",
-              "FOO": "BAR",
-            },
-          });
-          try {
-            await waitForWebSocketOpen(wss);
-            log.appendLine(`open: ${payload}`);
-            wss.send(enc.encode(payload + "\n"));
-          } catch (err: any) {
-            log.appendLine(`WebSocket error: ${err.message}`);
-          }
-        }
-      })();
-    },
-    close: () => {
-      wss.close();
-      // log.appendLine(`close`);
-    },
-    handleInput: (data: string) => {
-      let payload = JSON.stringify([0, "i", data]);
-      // log.appendLine(`handleInput: ${payload}`);
-      if (wss.readyState === WebSocket.OPEN) {
-        wss.send(enc.encode(payload + "\n"));
-      }
-    },
-    setDimensions: (dimensions: vscode.TerminalDimensions) => {
-      const { columns, rows } = dimensions;
-      let payload = JSON.stringify({
-        "version": 2,
-        "width": columns,
-        "height": rows,
-      });
-      // log.appendLine(`setDimensions: ${payload}`);
-      if (wss.readyState === WebSocket.OPEN) {
-        wss.send(enc.encode(payload + "\n"));
-      }
-    },
+    open,
+    close,
+    handleInput,
+    setDimensions,
   };
 }
 
@@ -279,14 +340,13 @@ function echoPty(): vscode.Pseudoterminal {
   let line = "";
   return {
     onDidWrite: writeEmitter.event,
-    open: (initialDimensions: vscode.TerminalDimensions | undefined) => {
+    open: (dimensions: vscode.TerminalDimensions | undefined) => {
       (async () => {
-        if (initialDimensions) {
-          const { columns, rows } = initialDimensions;
+        if (dimensions) {
           let payload = JSON.stringify({
             "version": 2,
-            "width": columns,
-            "height": rows,
+            "width": dimensions.columns,
+            "height": dimensions.rows,
             "cmd": ["/bin/bash"],
             "env": {
               "TERM": "xterm-256color",
@@ -333,11 +393,10 @@ function echoPty(): vscode.Pseudoterminal {
       writeEmitter.fire(data);
     },
     setDimensions: (dimensions: vscode.TerminalDimensions) => {
-      const { columns, rows } = dimensions;
       let payload = JSON.stringify({
         "version": 2,
-        "width": columns,
-        "height": rows,
+        "width": dimensions.columns,
+        "height": dimensions.rows,
       });
       log.appendLine(`setDimensions: ${payload}`);
     },

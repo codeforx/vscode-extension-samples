@@ -1,8 +1,10 @@
 {
   "name": "echoshell",
+  "publisher": "btwiuse",
   "displayName": "echoshell",
   "description": "",
-  "version": "0.0.8",
+  "repository": "https://github.com/example",
+  "version": "0.0.13",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -43,10 +45,11 @@
           "type": "object",
           "properties": {
             "label": { "type": "string" },
+            "value": { "type": "string" },
             "description": { "type": "number" },
-            "alwaysShow": {"type": "boolean"}
+            "alwaysShow": { "type": "boolean" }
           },
-          "required": ["label"],
+          "required": ["label", "value"],
           "description": "An array of WebSocket URL as QuickPickItem",
           "default": [],
           "items": {
