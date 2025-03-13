@@ -1,7 +1,7 @@
 import { dirname } from "path";
 import * as vscode from "vscode";
 
-const terminalProfileName = "EchoShell";
+const TerminalProfileName = "EchoShell";
 const dec = new TextDecoder();
 const enc = new TextEncoder();
 
@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
         provideTerminalProfile(token) {
           return {
             options: {
-              name: terminalProfileName,
+              name: TerminalProfileName,
               pty: echoPty(),
               location: vscode.TerminalLocation.Editor,
               isTransient: false,
@@ -70,7 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         vscode.window.createTerminal({
-          name: `PersistentWebShell`,
+          name: selected.label,
           pty: PersistentPty(selected.value),
           location: vscode.TerminalLocation.Editor,
         });
@@ -214,33 +214,6 @@ function initWebsocket(ws: WebSocket, payload: any): Promise<void> {
         vscode.window.showInformationMessage(
           "WebSocket closed. Press enter to reconnect.",
         );
-        reject(new Error(`WebSocket closed before opening: ${event.reason}`));
-      }, { once: true });
-    } else {
-      // If the WebSocket is in CLOSING or CLOSED state, reject
-      reject(new Error(`WebSocket is in state ${ws.readyState}`));
-    }
-  });
-}
-
-function waitForWebSocketOpen(ws: WebSocket): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      // If the WebSocket is already open, resolve immediately
-      resolve();
-    } else if (ws.readyState === WebSocket.CONNECTING) {
-      // Wait for the 'open' event
-      ws.addEventListener("open", () => resolve(), { once: true });
-      // Handle connection errors
-      ws.addEventListener("error", (err: any) => {
-        vscode.window.showInformationMessage(
-          `WebSocket error observed: ${err.message}`,
-        );
-        reject(err);
-      }, { once: true });
-      // Handle connection closure before opening
-      ws.addEventListener("close", (event) => {
-        vscode.window.showInformationMessage("WebSocket is closed now.");
         reject(new Error(`WebSocket closed before opening: ${event.reason}`));
       }, { once: true });
     } else {
