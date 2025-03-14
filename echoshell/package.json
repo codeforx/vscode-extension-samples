@@ -1,0 +1,108 @@
+{
+  "name": "echoshell",
+  "publisher": "btwiuse",
+  "displayName": "echoshell",
+  "description": "",
+  "repository": "https://github.com/example",
+  "version": "0.0.16",
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "browser": "./out/extension.js",
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "echoshell.createNewTerminal",
+        "title": "Create New Terminal",
+        "category": "EchoShell"
+      },
+      {
+        "command": "myExtension.showConfigArray",
+        "title": "Show Config Array",
+        "category": "EchoShell"
+      },
+      {
+        "command": "myExtension.addToConfigArray",
+        "title": "Add to Config Array",
+        "category": "EchoShell"
+      },
+      {
+        "command": "myExtension.editConfigArray",
+        "title": "Edit Config Array",
+        "category": "EchoShell"
+      }
+    ],
+    "configuration": {
+      "id": "echoshell",
+      "title": "EchoShell",
+      "properties": {
+        "echoshell.terminalEndpoints": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string" },
+            "value": { "type": "string" },
+            "description": { "type": "number" },
+            "alwaysShow": { "type": "boolean" }
+          },
+          "required": ["label", "value"],
+          "description": "An array of WebSocket URL as QuickPickItem",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "when": "isWeb || !isWeb",
+          "group": "navigation",
+          "command": "echoshell.createNewTerminal"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "myExtension.showConfigArray",
+          "title": "Show Config Array"
+        },
+        {
+          "command": "myExtension.addToConfigArray",
+          "title": "Add to Config Array"
+        },
+        {
+          "command": "myExtension.editConfigArray",
+          "title": "Edit Config Array"
+        }
+      ]
+    },
+    "terminal": {
+      "profiles": [
+        {
+          "id": "btwiuse.echoshell",
+          "title": "EchoShell"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@stylistic/eslint-plugin": "^2.9.0",
+    "@types/node": "^20",
+    "@types/vscode": "^1.93.0",
+    "eslint": "^9.13.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.16.0"
+  }
+}

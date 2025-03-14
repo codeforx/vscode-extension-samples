@@ -1,0 +1,54 @@
+{
+  "name": "qrcoder",
+  "publisher": "btwiuse",
+  "displayName": "qrcoder",
+  "description": "",
+  "repository": "https://github.com/example",
+  "version": "0.0.7",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "browser": "./out/extension.js",
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "qrcoder.text2qrcode",
+        "title": "Text2QRCode"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "qrcoder.text2qrcode",
+          "title": "Text2QRCode"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "node esbuild.js",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@stylistic/eslint-plugin": "^2.9.0",
+    "@types/node": "^20",
+    "@types/qrcode": "^1.5.5",
+    "@types/vscode": "^1.96.0",
+    "esbuild": "^0.25.1",
+    "eslint": "^9.13.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.16.0"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "qrcode-generator": "^1.4.4"
+  }
+}
