@@ -4,7 +4,7 @@
   "displayName": "echoshell",
   "description": "",
   "repository": "https://github.com/example",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "engines": {
     "vscode": "^1.93.0"
   },

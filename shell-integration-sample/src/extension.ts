@@ -70,9 +70,10 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         vscode.window.createTerminal({
-          name: `$(terminal) ${selected.label}`,
+          name: selected.label,
           pty: PersistentPty(selected.value),
           location: vscode.TerminalLocation.Editor,
+          iconPath: new vscode.ThemeIcon("terminal"),
         });
       },
     ),
