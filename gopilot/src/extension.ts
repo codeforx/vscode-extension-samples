@@ -2,93 +2,32 @@ import * as vscode from "vscode";
 
 class SideOutputProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "gopilot";
-  private _view?: vscode.WebviewView;
-  private _extUri?: vscode.Uri;
 
-  constructor() {}
+  constructor(private readonly extUri: vscode.Uri) {}
 
   async resolveWebviewView(
     webviewView: vscode.WebviewView,
     context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken,
   ) {
-    this._view = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
       enableCommandUris: true,
     };
-    const htmlUri = vscode.Uri.joinPath(this._extUri!, "media/index.html");
+
+    const htmlUri = vscode.Uri.joinPath(this.extUri, "media/index.html");
     const buffer = await vscode.workspace.fs.readFile(htmlUri);
-    const decoder = new TextDecoder("utf-8");
-    const html = decoder.decode(buffer);
-
-    webviewView.webview.html = html;
+    webviewView.webview.html = new TextDecoder("utf-8").decode(buffer);
   }
-
-  setContent(data: any) {
-    if (this._view) {
-      if (data.image) {
-        const timestamp = new Date().getTime();
-        const comUri = vscode.Uri.parse(
-          `command:NclNotebook.openImage?${JSON.stringify(data.image)}`,
-        );
-        const fileName = data.image.split("/").pop();
-        data.image =
-          `<button id="copy" onclick="copyImage()">Copy</button><button id="save" name="${fileName}" onclick="saveImage()">Save</button><button id="pin" onclick="pinImage()">Pin</button><button id="crop" onclick="cropImage()">Crop</button><br><a href="${comUri}"><img id="image" onmouseout="resetScroll()" src="${
-            this._view.webview.asWebviewUri(vscode.Uri.file(data.image)) +
-            "?timestamp=" + timestamp
-          }"></a>`;
-      }
-      if (data.pdf) {
-        const timestamp = new Date().getTime();
-        const fileName = data.pdf.split("/").pop().replace(".pdf", ".png");
-        const comUri = vscode.Uri.parse(
-          `command:NclNotebook.openImage?${JSON.stringify(data.pdf)}`,
-        );
-        data.pdf = `${
-          this._view.webview.asWebviewUri(vscode.Uri.file(data.pdf))
-        }`;
-        data.pdfHtml =
-          `<button id="copy" onclick="copyImage()">Copy</button><button id="save" name="${fileName}" onclick="saveImage()">Save</button><button id="pin" onclick="pinImage()">Pin</button><button id="crop" onclick="cropImage()">Crop</button><br><a href="${comUri}"><img id="image" onmouseout="resetScroll()"></div></a>`;
-      }
-      this._view.webview.postMessage(data);
-    } else {
-      vscode.window.showWarningMessage("Output is hidden!");
-    }
-  }
-
-  reveal() {
-    if (this._view && !this._view.visible) {
-      this._view.show(true);
-    }
-  }
-
-  getExtUri(extUri: vscode.Uri) {
-    this._extUri = extUri;
-  }
-}
-
-const sideOutputProvider = new SideOutputProvider();
-
-function registerSideBar(context: vscode.ExtensionContext) {
-  sideOutputProvider.getExtUri(context.extensionUri);
-  vscode.window.registerWebviewViewProvider(
-    SideOutputProvider.viewType,
-    sideOutputProvider,
-    { webviewOptions: { retainContextWhenHidden: true } },
-  );
-}
-
-function changeOutput(data: any) {
-  sideOutputProvider.setContent(data);
-}
-
-function reveal() {
-  sideOutputProvider.reveal();
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  registerSideBar(context);
+  const provider = new SideOutputProvider(context.extensionUri);
+  vscode.window.registerWebviewViewProvider(
+    SideOutputProvider.viewType,
+    provider,
+    { webviewOptions: { retainContextWhenHidden: true } },
+  );
 }
 
 export function deactivate() {}
