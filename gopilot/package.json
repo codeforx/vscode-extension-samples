@@ -1,0 +1,87 @@
+{
+  "name": "gopilot",
+  "displayName": "Gopilot",
+  "description": "Gopilot in VSCode",
+  "version": "0.0.3",
+  "engines": {
+    "vscode": "^1.73.1"
+  },
+  "keywords": [
+    "gopilot"
+  ],
+  "publisher": "btwiuse",
+  "icon": "img/icon.png",
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "browser": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gopilot",
+          "title": "Gopilot",
+          "icon": "$(hubot)"
+        }
+      ]
+    },
+    "views": {
+      "gopilot": [
+        {
+          "type": "webview",
+          "id": "gopilot",
+          "name": "btwiuse"
+        }
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/"
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "npm run compile:extension",
+    "compile:extension": "tsc -b",
+    "compile:client": "webpack --mode production",
+    "lint": "eslint src --ext ts",
+    "watch": "concurrently -r \"npm:watch:*\"",
+    "watch:extension": "tsc -b --watch",
+    "watch:client": "webpack --mode development --watch",
+    "dev": "concurrently -r npm:watch:extension npm:watch:client",
+    "pretest": "npm run compile && npm run lint",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.0.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^18.11.12",
+    "@types/vscode": "^1.73.1",
+    "@types/vscode-notebook-renderer": "^1.72.0",
+    "@types/webpack-env": "^1.18.0",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "@vscode/test-electron": "^2.2.0",
+    "@vscode/vsce": "2.18.0",
+    "concurrently": "^7.6.0",
+    "css-loader": "^6.7.2",
+    "eslint": "^8.28.0",
+    "fork-ts-checker-webpack-plugin": "^7.2.13",
+    "glob": "^8.0.3",
+    "mocha": "^10.1.0",
+    "style-loader": "^3.3.1",
+    "ts-loader": "^9.4.1",
+    "typescript": "^4.9.3",
+    "util": "^0.12.5",
+    "vscode-notebook-error-overlay": "^1.0.1",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
+  },
+  "__metadata": {
+    "installedTimestamp": 1742008548596,
+    "size": 1351682
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+}
