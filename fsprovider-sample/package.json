@@ -1,8 +1,8 @@
 {
-	"name": "vscode-memfs",
-	"displayName": "MemFS - a file system provider sample",
+	"name": "memfs",
+	"displayName": "MemFS",
 	"description": "Showcase for the file system provider API, also useful for testing again document that are not on disk.",
-	"version": "0.0.3",
+	"version": "0.0.1",
 	"publisher": "vscode-samples",
 	"private": true,
 	"license": "MIT",
@@ -20,6 +20,7 @@
 		"onFileSystem:memfs"
 	],
 	"main": "./out/src/extension",
+	"browser": "./out/src/extension",
 	"contributes": {
 		"commands": [
 			{
@@ -75,7 +76,8 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -p ./",
+		"compile": "npm run check-types && node esbuild.js",
+		"check-types": "tsc --noEmit",
 		"lint": "eslint",
 		"watch": "tsc -watch -p ./"
 	},
@@ -83,9 +85,14 @@
 		"@eslint/js": "^9.13.0",
 		"@stylistic/eslint-plugin": "^2.9.0",
 		"@types/node": "^20",
+		"@types/path-browserify": "^1.0.3",
 		"@types/vscode": "^1.73.0",
+		"esbuild": "^0.25.1",
 		"eslint": "^9.13.0",
 		"typescript": "^5.8.2",
 		"typescript-eslint": "^8.26.0"
+	},
+	"dependencies": {
+		"path-browserify": "^1.0.1"
 	}
 }
