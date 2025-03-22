@@ -1,4 +1,3 @@
-import { dirname } from "path";
 import * as vscode from "vscode";
 
 const TerminalProfileName = "EchoShell";
@@ -45,9 +44,11 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "echoshell.createNewTerminal",
-      async () => {
-        // Show an input box to the user
-        const selected = await getOrAppendURL();
+      async (input: any) => {
+        // Use input object if provided, otherwise show input box
+        const selected = input?.value && input?.label
+          ? input
+          : await getOrAppendURL();
 
         if (!selected) {
           return;

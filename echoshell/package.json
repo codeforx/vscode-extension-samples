@@ -4,7 +4,7 @@
   "displayName": "echoshell",
   "description": "A Visual Studio Code extension that provides enhanced terminal integration, allowing users to create and manage terminal profiles, connect to WebSocket endpoints, and configure terminal settings directly from the VS Code interface.",
   "repository": "https://github.com/codiegogo/vscode-extension-samples",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "engines": {
     "vscode": "^1.93.0"
   },
