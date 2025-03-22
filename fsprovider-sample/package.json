@@ -2,7 +2,7 @@
 	"name": "memfs",
 	"displayName": "MemFS",
 	"description": "Showcase for the file system provider API, also useful for testing again document that are not on disk.",
-	"version": "0.0.1",
+	"version": "0.0.3",
 	"publisher": "vscode-samples",
 	"private": true,
 	"license": "MIT",
@@ -19,8 +19,8 @@
 	"activationEvents": [
 		"onFileSystem:memfs"
 	],
-	"main": "./out/src/extension",
-	"browser": "./out/src/extension",
+	"main": "./out/extension",
+	"browser": "./out/extension",
 	"contributes": {
 		"commands": [
 			{

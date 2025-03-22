@@ -13,7 +13,7 @@ async function main() {
     sourcemap: !production,
     sourcesContent: false,
     platform: "browser",
-    outdir: "dist/web",
+    outdir: "out",
     external: ["vscode"],
     logLevel: "silent",
     // Node.js global to browser globalThis
