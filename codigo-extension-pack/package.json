@@ -1,0 +1,50 @@
+{
+  "name": "codigo-extension-pack",
+  "displayName": "Codigo Extension Pack",
+  "description": "A collection of extensions for Codigo Editor.",
+  "publisher": "btwiuse",
+  "author": {
+    "name": "Btwiuse Arch"
+  },
+  "version": "0.0.0",
+  "engines": {
+    "vscode": "^1.49.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codestackr/superhero-extensions"
+  },
+  "bugs": {
+    "url": "https://github.com/codestackr/superhero-extensions/issues"
+  },
+  "galleryBanner": {
+    "color": "#09131b",
+    "theme": "dark"
+  },
+  "icon": "images/icon/logo.png",
+  "categories": [
+    "Extension Packs"
+  ],
+  "keywords": [
+    "SuperHero Extensions",
+    "codeSTACKr Extensions",
+    "VSCode SuperHero",
+    "vsCodeHero",
+    "codeSTACKr",
+    "web development",
+    "web dev",
+    "basic extension pack",
+    "basic extensions"
+  ],
+  "badges": [
+    {
+      "url": "https://img.shields.io/badge/SUPPORT%20THIS%20PROJECT-Become%20a%20VS%20Code%20SuperHero%20%E2%86%92-gray?colorA=272727&colorB=ff652f&style=flat",
+      "href": "http://vsCodeHero.com",
+      "description": "Support this project!"
+    }
+  ],
+  "extensionPack": [
+    "btwiuse.codigo-bridge",
+    "btwiuse.echoshell"
+  ]
+}
