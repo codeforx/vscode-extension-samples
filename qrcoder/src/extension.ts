@@ -17,25 +17,27 @@ export function activate(context: vscode.ExtensionContext) {
 
   let disposable = vscode.commands.registerCommand(
     "qrcoder.text2qrcode",
-    () => {
-      getSelectedTextOrPrompt("Text to convert into QR code").then((text) => {
-        if (!text) return;
+    (input?: string) => {
+      getSelectedTextOrPrompt("Text to convert into QR code", input).then(
+        (text) => {
+          if (!text) return;
 
-        try {
-          const url = generateQRCodeDataURL(text, "L");
-          const panel = vscode.window.createWebviewPanel(
-            "Text2QRCode",
-            "Text2QRCode",
-            vscode.ViewColumn.One,
-            {},
-          );
-          panel.webview.html = getPreviewHtml(url);
-        } catch (err) {
-          vscode.window.showErrorMessage(
-            err instanceof Error ? err.message : String(err),
-          );
-        }
-      });
+          try {
+            const url = generateQRCodeDataURL(text, "L");
+            const panel = vscode.window.createWebviewPanel(
+              "QR Coder",
+              "QR Coder",
+              vscode.ViewColumn.One,
+              {},
+            );
+            panel.webview.html = getPreviewHtml(url);
+          } catch (err) {
+            vscode.window.showErrorMessage(
+              err instanceof Error ? err.message : String(err),
+            );
+          }
+        },
+      );
     },
   );
 
@@ -52,15 +54,18 @@ function getPreviewHtml(image: string): string {
     </head>
     <body style="margin: 0; height: 100%;">
     <div style="display: flex; height: 100vh; width: 100vw;">
-	<div style="display: flex; flex: 1; align-items: center; justify-content: center;">
-	    <img src="${image}" style="max-width: 100%; max-height: 100%; object-fit: contain; display: block;" />
-	</div>
+	<img src="${image}" style="max-width: 100%; max-height: 100%; object-fit: contain; display: block;" />
     </div>
     </body>
     </html>`;
 }
 
-function getSelectedTextOrPrompt(prompt: string): Thenable<string | undefined> {
+function getSelectedTextOrPrompt(
+  prompt: string,
+  input?: string,
+): Thenable<string | undefined> {
+  if (input) return Promise.resolve(input);
+
   const activeTextEditor = vscode.window.activeTextEditor;
 
   if (activeTextEditor) {
