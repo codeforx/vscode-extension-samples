@@ -1,10 +1,12 @@
 import * as vscode from "vscode";
 import qrcode from "qrcode-generator";
 
+type ErrorCorrectionLevel = "L" | "M" | "Q" | "H";
+
 // Function to generate QR code as data URL
 function generateQRCodeDataURL(
   text: string,
-  errorCorrectionLevel: "L" | "M" | "Q" | "H" = "L",
+  errorCorrectionLevel: ErrorCorrectionLevel = "Q",
 ): string {
   const qr = qrcode(0, errorCorrectionLevel); // Type 0 auto-detects size, 'L' is error correction level
   qr.addData(text);
@@ -21,11 +23,15 @@ export function activate(context: vscode.ExtensionContext) {
       getSelectedTextOrPrompt("Text to convert into QR code", input).then(
         (text) => {
           if (!text) return;
+          vscode.window.showInformationMessage(
+            "QR Coder:",
+            JSON.stringify(text),
+          );
 
           try {
-            const url = generateQRCodeDataURL(text, "L");
+            const url = generateQRCodeDataURL(text);
             const panel = vscode.window.createWebviewPanel(
-              "QR Coder",
+              "qrcoder",
               "QR Coder",
               vscode.ViewColumn.One,
               {},
@@ -64,7 +70,7 @@ function getSelectedTextOrPrompt(
   prompt: string,
   input?: string,
 ): Thenable<string | undefined> {
-  if (input) return Promise.resolve(input);
+  if (input instanceof String) return Promise.resolve(input);
 
   const activeTextEditor = vscode.window.activeTextEditor;
 

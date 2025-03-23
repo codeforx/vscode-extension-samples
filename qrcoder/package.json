@@ -8,7 +8,7 @@
     "url": "https://github.com/codiegogo/vscode-extension-samples"
   },
   "icon": "qrcoder.png",
-  "version": "0.0.10",
+  "version": "0.0.12",
   "engines": {
     "vscode": "^1.96.0"
   },
