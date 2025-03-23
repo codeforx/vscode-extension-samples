@@ -18,25 +18,24 @@ export function activate(context: vscode.ExtensionContext) {
   let disposable = vscode.commands.registerCommand(
     "qrcoder.text2qrcode",
     () => {
-      getSelectedTextOrPrompt("Text to convert into QR code")
-        .then((text) => {
-          if (!text) return;
+      getSelectedTextOrPrompt("Text to convert into QR code").then((text) => {
+        if (!text) return;
 
-          try {
-            const url = generateQRCodeDataURL(text, "L");
-            const panel = vscode.window.createWebviewPanel(
-              "Text2QRCode",
-              "Text2QRCode",
-              vscode.ViewColumn.One,
-              {},
-            );
-            panel.webview.html = getPreviewHtml(url);
-          } catch (err) {
-            vscode.window.showErrorMessage(
-              err instanceof Error ? err.message : String(err),
-            );
-          }
-        });
+        try {
+          const url = generateQRCodeDataURL(text, "L");
+          const panel = vscode.window.createWebviewPanel(
+            "Text2QRCode",
+            "Text2QRCode",
+            vscode.ViewColumn.One,
+            {},
+          );
+          panel.webview.html = getPreviewHtml(url);
+        } catch (err) {
+          vscode.window.showErrorMessage(
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      });
     },
   );
 
@@ -45,17 +44,17 @@ export function activate(context: vscode.ExtensionContext) {
 
 function getPreviewHtml(image: string): string {
   return `<!DOCTYPE html>
-    <html lang="en">
+    <html lang="en" style="height: 100%;">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Text2QRCode</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>QR Coder</title>
     </head>
-    <body>
-    <div style="display: flex; min-height: 240px; height: 100%; width: 100%;">
-        <div style="display: flex; flex: 1; flex-direction: column; justify-content: center;">
-            <img src="${image}" style="align-self: center;" />
-        </div>
+    <body style="margin: 0; height: 100%;">
+    <div style="display: flex; height: 100vh; width: 100vw;">
+	<div style="display: flex; flex: 1; align-items: center; justify-content: center;">
+	    <img src="${image}" style="max-width: 100%; max-height: 100%; object-fit: contain; display: block;" />
+	</div>
     </div>
     </body>
     </html>`;

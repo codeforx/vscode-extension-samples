@@ -1,13 +1,13 @@
 {
   "name": "qrcoder",
   "publisher": "btwiuse",
-  "displayName": "qrcoder",
+  "displayName": "QR Coder",
   "description": "A VSCode extension to generate QR codes from text.",
   "repository": {
     "type": "git",
     "url": "https://github.com/codiegogo/vscode-extension-samples"
   },
-  "version": "0.0.8",
+  "version": "0.0.9",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -18,7 +18,6 @@
     "onCommand:qrcoder.text2qrcode"
   ],
   "browser": "./out/extension.js",
-  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
