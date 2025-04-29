@@ -22,7 +22,51 @@ function ab2json(arrayBuffer: ArrayBuffer): any {
   }
 }
 
+class SideOutputProvider implements vscode.WebviewViewProvider {
+  public static readonly viewType = "echoshell";
+
+  constructor(private readonly extUri: vscode.Uri) {}
+
+  async resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken,
+  ) {
+    webviewView.webview.options = {
+      enableScripts: true,
+      enableCommandUris: true,
+    };
+
+    const htmlUri = vscode.Uri.joinPath(this.extUri, "media/index.html");
+    const buffer = await vscode.workspace.fs.readFile(htmlUri);
+    webviewView.webview.html = new TextDecoder("utf-8").decode(buffer);
+    webviewView.webview.onDidReceiveMessage(
+      (message) => {
+	switch (message.command) {
+	  case 'ADD':
+	    vscode.window.showInformationMessage(
+	      `TODO: echoshell.addToConfigArray`,
+	    );
+	    return;
+	  case 'EDIT':
+	    vscode.window.showInformationMessage(
+	      `TODO: editConfigArray`,
+	    );
+	    return;
+	}
+      }
+    );
+  }
+}
+
 export function activate(context: vscode.ExtensionContext) {
+  const provider = new SideOutputProvider(context.extensionUri);
+  vscode.window.registerWebviewViewProvider(
+    SideOutputProvider.viewType,
+    provider,
+    { webviewOptions: { retainContextWhenHidden: true } },
+  );
+
   context.subscriptions.push(
     vscode.window.registerTerminalProfileProvider(
       "btwiuse.echoshell",

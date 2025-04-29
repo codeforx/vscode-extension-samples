@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echoshell Menu</title>
+  </head>
+  <body>
+    <button onclick="handleAdd()">ADD</button>
+    <button onclick="handleEdit()">EDIT</button>
+    <script>
+      const vscode = acquireVsCodeApi();
+      function handleAdd() {
+        vscode.postMessage({ command: "ADD" });
+      }
+      function handleEdit() {
+        vscode.postMessage({ command: "EDIT" });
+      }
+    </script>
+  </body>
+</html>
