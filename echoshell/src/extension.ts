@@ -49,9 +49,20 @@ class SideOutputProvider implements vscode.WebviewViewProvider {
           case "EDIT":
             await handleEdit();
             break;
+          case "openTerminal":
+            await vscode.commands.executeCommand(
+              "echoshell.createNewTerminal",
+              message.endpoint,
+            );
+            break;
         }
       },
     );
+    // Send the list of endpoints to the webview
+    webviewView.webview.postMessage({
+      command: "updateEndpoints",
+      endpoints: await getMyConfigArray(),
+    });
   }
 }
 
@@ -60,7 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.registerWebviewViewProvider(
     SideOutputProvider.viewType,
     provider,
-    { webviewOptions: { retainContextWhenHidden: true } },
+    { webviewOptions: { retainContextWhenHidden: false } },
   );
 
   context.subscriptions.push(

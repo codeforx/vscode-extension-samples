@@ -8,13 +8,38 @@
   <body>
     <button onclick="handleAdd()">ADD</button>
     <button onclick="handleEdit()">EDIT</button>
+    <ul id="endpoints"></ul>
     <script>
       const vscode = acquireVsCodeApi();
+
       function handleAdd() {
         vscode.postMessage({ command: "ADD" });
       }
+
       function handleEdit() {
         vscode.postMessage({ command: "EDIT" });
+      }
+
+      window.addEventListener("message", (event) => {
+        const message = event.data;
+        switch (message.command) {
+          case "updateEndpoints":
+            updateEndpoints(message.endpoints);
+            break;
+        }
+      });
+
+      function updateEndpoints(endpoints) {
+        const ul = document.getElementById("endpoints");
+        ul.innerHTML = "";
+        endpoints.forEach((endpoint) => {
+          const li = document.createElement("li");
+          li.textContent = endpoint.label;
+          li.onclick = () => {
+            vscode.postMessage({ command: "openTerminal", endpoint });
+          };
+          ul.appendChild(li);
+        });
       }
     </script>
   </body>
