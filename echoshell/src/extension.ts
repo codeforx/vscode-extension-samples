@@ -41,20 +41,16 @@ class SideOutputProvider implements vscode.WebviewViewProvider {
     const buffer = await vscode.workspace.fs.readFile(htmlUri);
     webviewView.webview.html = new TextDecoder("utf-8").decode(buffer);
     webviewView.webview.onDidReceiveMessage(
-      (message) => {
-	switch (message.command) {
-	  case 'ADD':
-	    vscode.window.showInformationMessage(
-	      `TODO: echoshell.addToConfigArray`,
-	    );
-	    return;
-	  case 'EDIT':
-	    vscode.window.showInformationMessage(
-	      `TODO: editConfigArray`,
-	    );
-	    return;
-	}
-      }
+      async (message) => {
+        switch (message.command) {
+          case "ADD":
+            await handleAdd();
+            break;
+          case "EDIT":
+            await handleEdit();
+            break;
+        }
+      },
     );
   }
 }
@@ -65,6 +61,18 @@ export function activate(context: vscode.ExtensionContext) {
     SideOutputProvider.viewType,
     provider,
     { webviewOptions: { retainContextWhenHidden: true } },
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("echoshell.addToConfigArray", async () => {
+      await handleAdd();
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("echoshell.editConfigArray", async () => {
+      await handleEdit();
+    }),
   );
 
   context.subscriptions.push(
@@ -194,23 +202,13 @@ async function getOrAppendURL(): Promise<
     return;
   }
   if (selectedItem.label === "EDIT") {
-    await vscode.commands.executeCommand(
-      "workbench.action.openSettingsJson",
-      { revealSetting: { key: "echoshell.terminalEndpoints", edit: true } },
-    );
+    await handleEdit();
     return;
   }
   let selected = undefined;
   if (selectedItem.label === "ADD") {
-    const userInput = await vscode.window.showInputBox({
-      prompt: "Please enter some text",
-      placeHolder: "Type here...",
-    });
-    if (!userInput) return;
-    selected = { label: userInput, value: userInput };
-    await addMyConfigArray(selected);
+    selected = await handleAdd();
   } else {
-    // TODO: use value only
     selected = { label: selectedItem.label, value: selectedItem.value };
   }
   return selected;
@@ -420,4 +418,24 @@ function echoPty(): vscode.Pseudoterminal {
       log.appendLine(`setDimensions: ${payload}`);
     },
   };
+}
+
+async function handleAdd(): Promise<
+  { label: string; value: string } | undefined
+> {
+  const userInput = await vscode.window.showInputBox({
+    prompt: "Please enter some text",
+    placeHolder: "Type here...",
+  });
+  if (!userInput) return;
+  const newItem = { label: userInput, value: userInput };
+  await addMyConfigArray(newItem);
+  return newItem;
+}
+
+async function handleEdit() {
+  await vscode.commands.executeCommand(
+    "workbench.action.openSettingsJson",
+    { revealSetting: { key: "echoshell.terminalEndpoints", edit: true } },
+  );
 }
