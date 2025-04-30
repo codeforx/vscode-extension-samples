@@ -39,6 +39,14 @@ class SideOutputProvider implements vscode.WebviewViewProvider {
 
     const htmlUri = vscode.Uri.joinPath(this.extUri, "media/index.html");
     const buffer = await vscode.workspace.fs.readFile(htmlUri);
+
+    updateEndpoints = async () => {
+      webviewView.webview.postMessage({
+        command: "updateEndpoints",
+        endpoints: await getMyConfigArray(),
+      });
+    };
+
     webviewView.webview.html = new TextDecoder("utf-8").decode(buffer);
     webviewView.webview.onDidReceiveMessage(
       async (message) => {
@@ -49,22 +57,30 @@ class SideOutputProvider implements vscode.WebviewViewProvider {
           case "EDIT":
             await handleEdit();
             break;
+          case "UPDATE_ENDPOINTS":
+            await updateEndpoints();
+            break;
           case "openTerminal":
             await vscode.commands.executeCommand(
               "echoshell.createNewTerminal",
               message.endpoint,
             );
             break;
+          default:
+            vscode.window.showInformationMessage(
+              `Unknown command: ${message.command}`,
+            );
         }
       },
     );
-    // Send the list of endpoints to the webview
-    webviewView.webview.postMessage({
-      command: "updateEndpoints",
-      endpoints: await getMyConfigArray(),
-    });
   }
 }
+
+let updateEndpoints = async () => {
+  vscode.window.showInformationMessage(
+    `Updating endpoints...`,
+  );
+};
 
 export function activate(context: vscode.ExtensionContext) {
   const provider = new SideOutputProvider(context.extensionUri);
@@ -85,6 +101,13 @@ export function activate(context: vscode.ExtensionContext) {
       await handleEdit();
     }),
   );
+
+  // Add an event listener to trigger webview refresh when settings.json is updated
+  vscode.workspace.onDidChangeConfiguration((e) => {
+    if (e.affectsConfiguration("echoshell.terminalEndpoints")) {
+      updateEndpoints();
+    }
+  });
 
   context.subscriptions.push(
     vscode.window.registerTerminalProfileProvider(

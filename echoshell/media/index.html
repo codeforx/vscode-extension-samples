@@ -20,6 +20,10 @@
         vscode.postMessage({ command: "EDIT" });
       }
 
+      function handleInit() {
+        vscode.postMessage({ command: "UPDATE_ENDPOINTS" });
+      }
+
       window.addEventListener("message", (event) => {
         const message = event.data;
         switch (message.command) {
@@ -41,6 +45,8 @@
           ul.appendChild(li);
         });
       }
+
+      handleInit();
     </script>
   </body>
 </html>
