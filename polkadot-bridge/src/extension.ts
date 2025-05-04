@@ -2,18 +2,17 @@ import * as vscode from "vscode";
 import { PolkadotBridge } from "./polkadotBridge.js";
 
 export async function activate(context: vscode.ExtensionContext) {
-  if (context.messagePassingProtocol) {
-    vscode.window.showInformationMessage("Polkadot bridge: messagePassingProtocol detected");
-  } else {
-    vscode.window.showInformationMessage("Polkadot bridge: messagePassingProtocol missing");
+  if (!context.messagePassingProtocol) {
+    vscode.window.showInformationMessage(
+      "Polkadot bridge: messagePassingProtocol missing",
+    );
+    return;
   }
 
-  // Usage
-  const chan = new MessageChannel();
-  const bridge = new PolkadotBridge(chan.port1);
-
-  // Post port to webview
-  self.postMessage({ type: "_bridge_port", port: chan.port2 }, [chan.port2]);
+  vscode.window.showInformationMessage(
+    "Polkadot bridge: messagePassingProtocol detected",
+  );
+  const bridge = new PolkadotBridge(context.messagePassingProtocol);
 
   // Connect and use
   bridge.connect()

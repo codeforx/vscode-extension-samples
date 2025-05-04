@@ -6,21 +6,20 @@ import {
   InjectedProvider,
   MetadataDef,
 } from "@polkadot/extension-inject/types";
+import * as vscode from "vscode";
 
 export class PolkadotBridge {
-  private port: MessagePort;
+  private protocol: vscode.MessagePassingProtocol;
   private pending = new Map<number, { resolve: Function; reject: Function }>();
   private subscriptions = new Map<string, Function>();
   private idCounter = 0;
 
-  constructor(port: MessagePort) {
-    this.port = port;
-    this.port.onmessage = this.handleMessage.bind(this);
+  constructor(protocol: vscode.MessagePassingProtocol) {
+    this.protocol = protocol;
+    this.protocol.onDidReceiveMessage((data) => this.handleMessage(data));
   }
 
-  private handleMessage(event: MessageEvent) {
-    const { data } = event;
-
+  private handleMessage(data: any) {
     if (data.type === "bridge-response") {
       const handler = this.pending.get(data.id);
       if (handler) {
@@ -42,7 +41,7 @@ export class PolkadotBridge {
       const id = this.idCounter++;
       this.pending.set(id, { resolve, reject });
 
-      this.port.postMessage({
+      this.protocol.postMessage({
         type: "bridge-command",
         id,
         path,
@@ -52,17 +51,20 @@ export class PolkadotBridge {
   }
 
   async connect(): Promise<void> {
+    let disposable: vscode.Disposable | undefined;
     return new Promise((resolve, reject) => {
-      const handler = (event: MessageEvent) => {
-        if (event.data.cmd === "CONNECT_SUCCESS") resolve();
-        if (event.data.cmd === "CONNECT_ERROR") {
-          reject(new Error(event.data.error));
+      const handler = (data: any) => {
+        if (data.cmd === "CONNECT_SUCCESS") {
+          resolve();
         }
-        this.port.removeEventListener("message", handler);
+        if (data.cmd === "CONNECT_ERROR") {
+          reject(new Error(data.error));
+        }
+        disposable?.dispose();
       };
 
-      this.port.addEventListener("message", handler);
-      this.port.postMessage({ cmd: "CONNECT" });
+      disposable = this.protocol.onDidReceiveMessage(handler);
+      this.protocol.postMessage({ cmd: "CONNECT" });
     });
   }
 
@@ -74,7 +76,7 @@ export class PolkadotBridge {
       subscribe: (callback: (accounts: InjectedAccount[]) => void) => {
         const subId = `sub-${Date.now()}-${Math.random()}`;
 
-        this.port.postMessage({
+        this.protocol.postMessage({
           type: "bridge-subscribe",
           subId,
         });
@@ -82,7 +84,7 @@ export class PolkadotBridge {
         this.subscriptions.set(subId, callback);
 
         return () => {
-          this.port.postMessage({
+          this.protocol.postMessage({
             type: "bridge-unsubscribe",
             subId,
           });

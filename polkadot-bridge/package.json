@@ -4,14 +4,14 @@
   "publisher": "btwiuse",
   "description": "Codigo editor bridge extension for polkadot wallet",
   "repository": "https://github.com/microsoft/vscode",
-  "version": "0.0.0",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": ["*"],
   "browser": "./dist/extension.js",
   "contributes": {
     "commands": [],
