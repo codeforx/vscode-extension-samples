@@ -1,0 +1,39 @@
+{
+  "name": "polkadot-bridge",
+  "displayName": "Polkadot Bridge",
+  "publisher": "btwiuse",
+  "description": "Codigo editor bridge extension for polkadot wallet",
+  "repository": "https://github.com/microsoft/vscode",
+  "version": "0.0.0",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "browser": "./dist/extension.js",
+  "contributes": {
+    "commands": [],
+    "menus": {
+      "editor/title": []
+    }
+  },
+  "scripts": {
+    "compile": "npm run check-types && node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@polkadot/extension-inject": "^0.58.4",
+    "@polkadot/types-augment": "^15.7.1",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-web": "^0.0.54",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.4.5"
+  },
+  "enabledApiProposals": [
+    "ipc"
+  ],
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+}
