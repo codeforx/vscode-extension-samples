@@ -4,7 +4,7 @@
   "publisher": "btwiuse",
   "description": "Codigo editor bridge extension",
   "repository": "https://github.com/microsoft/vscode",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -14,7 +14,7 @@
   "activationEvents": [
     "onFileSystem:hostfs"
   ],
-  "browser": "./dist/web/extension.js",
+  "browser": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -38,13 +38,11 @@
     }
   },
   "scripts": {
-    "compile-web": "npm run check-types && node esbuild.js",
-    "watch-web": "node esbuild.js --watch",
+    "compile": "npm run check-types && node esbuild.js",
+    "watch": "node esbuild.js --watch",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
-    "@polkadot/extension-inject": "^0.58.4",
-    "@polkadot/types-augment": "^15.7.1",
     "@types/vscode": "^1.90.0",
     "@vscode/test-web": "^0.0.54",
     "esbuild": "^0.21.5",
