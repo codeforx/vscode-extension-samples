@@ -167,15 +167,6 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("echoshell.editConfigArray", async () => {
-      await vscode.commands.executeCommand(
-        "workbench.action.openSettingsJson",
-        { revealSetting: { key: "echoshell.terminalEndpoints", edit: true } },
-      );
-    }),
-  );
-
-  context.subscriptions.push(
     vscode.commands.registerCommand("echoshell.showConfigArray", async () => {
       const items: vscode.QuickPickItem[] = [
         ...getMyConfigArray(),

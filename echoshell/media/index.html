@@ -4,11 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Echoshell Menu</title>
+    <style>
+      .card-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .card {
+        background-color: #f0f0f0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 10px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      .card:hover {
+        background-color: #e0e0e0;
+      }
+    </style>
   </head>
   <body>
     <button onclick="handleAdd()">ADD</button>
     <button onclick="handleEdit()">EDIT</button>
-    <ul id="endpoints"></ul>
+    <div id="endpoints" class="card-container"></div>
     <script>
       const vscode = acquireVsCodeApi();
 
@@ -34,15 +52,16 @@
       });
 
       function updateEndpoints(endpoints) {
-        const ul = document.getElementById("endpoints");
-        ul.innerHTML = "";
+        const container = document.getElementById("endpoints");
+        container.innerHTML = "";
         endpoints.forEach((endpoint) => {
-          const li = document.createElement("li");
-          li.textContent = endpoint.label;
-          li.onclick = () => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.textContent = endpoint.label;
+          card.onclick = () => {
             vscode.postMessage({ command: "openTerminal", endpoint });
           };
-          ul.appendChild(li);
+          container.appendChild(card);
         });
       }
 
