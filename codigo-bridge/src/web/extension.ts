@@ -9,6 +9,10 @@ import * as duplex from "../duplex/duplex.min.js";
 declare const navigator: unknown;
 
 export async function activate(context: vscode.ExtensionContext) {
+  if (context.messagePassingProtocol) {
+    vscode.window.showInformationMessage("Codigo: messagePassingProtocol detected");
+  }
+
   if (typeof navigator !== "object") { // do not run under node.js
     console.error("not running in browser");
     return;
