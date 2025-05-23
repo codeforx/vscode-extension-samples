@@ -83,6 +83,40 @@ let updateEndpoints = async () => {
 };
 
 export function activate(context: vscode.ExtensionContext) {
+  const saved =
+    context.globalState.get<TrackedTerminalInfo[]>("persistedTerminals") || [];
+  function createTrackedTerminal(info: TrackedTerminalInfo): vscode.Terminal {
+    const terminal = vscode.window.createTerminal({
+      name: info.label,
+      pty: PersistentPty(info.value),
+      location: vscode.TerminalLocation.Editor,
+      iconPath: new vscode.ThemeIcon("terminal"),
+    });
+
+    const existing = saved.find((t) =>
+      t.label === info.label && t.value === info.value
+    );
+    if (!existing) {
+      saved.push(info);
+      context.globalState.update("persistedTerminals", saved);
+    }
+
+    const disposable = vscode.window.onDidCloseTerminal(
+      (closed: vscode.Terminal) => {
+        if (closed.name === info.label) {
+          const idx = saved.findIndex((t) =>
+            t.label === info.label && t.value === info.value
+          );
+          if (idx !== -1) saved.splice(idx, 1);
+          context.globalState.update("persistedTerminals", saved);
+          disposable.dispose();
+        }
+      },
+    );
+
+    return terminal;
+  }
+
   const provider = new SideOutputProvider(context.extensionUri);
   vscode.window.registerWebviewViewProvider(
     SideOutputProvider.viewType,
@@ -132,9 +166,8 @@ export function activate(context: vscode.ExtensionContext) {
       "echoshell.createNewTerminal",
       async (input: any) => {
         // Use input object if provided, otherwise show input box
-        const selected = input?.value && input?.label
-          ? input
-          : await getOrAppendURL();
+        const selected: TrackedTerminalInfo | undefined =
+          input?.value && input?.label ? input : await getOrAppendURL();
 
         if (!selected) {
           return;
@@ -156,12 +189,7 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        vscode.window.createTerminal({
-          name: selected.label,
-          pty: PersistentPty(selected.value),
-          location: vscode.TerminalLocation.Editor,
-          iconPath: new vscode.ThemeIcon("terminal"),
-        });
+        createTrackedTerminal(selected);
       },
     ),
   );
@@ -201,10 +229,21 @@ export function activate(context: vscode.ExtensionContext) {
       );
     }),
   );
+
+  for (const [index, info] of saved.entries()) {
+    setTimeout(() => {
+      createTrackedTerminal(info);
+    }, 1000 * (1 + index));
+  }
+}
+
+interface TrackedTerminalInfo {
+  value: string;
+  label: string;
 }
 
 async function getOrAppendURL(): Promise<
-  { label: string; value: string } | undefined
+  TrackedTerminalInfo | undefined
 > {
   const items = [
     ...getMyConfigArray(),
@@ -446,7 +485,7 @@ function echoPty(): vscode.Pseudoterminal {
 }
 
 async function handleAdd(): Promise<
-  { label: string; value: string } | undefined
+  TrackedTerminalInfo | undefined
 > {
   const userInput = await vscode.window.showInputBox({
     prompt: "Please enter some text",
