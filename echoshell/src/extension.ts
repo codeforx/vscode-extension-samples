@@ -4,6 +4,14 @@ const TerminalProfileName = "EchoShell";
 const dec = new TextDecoder();
 const enc = new TextEncoder();
 
+enum ConnectionStatus {
+  Connected = "Connected",
+  Connecting = "Connecting",
+  Disconnected = "Disconnected",
+  Reconnecting = "Reconnecting",
+  Unknown = "Unknown",
+}
+
 function arrayBufferToJson(arrayBuffer: ArrayBuffer): any {
   try {
     // Convert ArrayBuffer to string
@@ -56,25 +64,41 @@ class TerminalReferenceTreeItem extends vscode.TreeItem {
   private getIconForStatus(status: string): vscode.ThemeIcon {
     switch (status) {
       case "Connected":
-        return new vscode.ThemeIcon("check", new vscode.ThemeColor("terminal.ansiGreen"));
+        return new vscode.ThemeIcon(
+          "check",
+          new vscode.ThemeColor("terminal.ansiGreen"),
+        );
       case "Connecting":
-        return new vscode.ThemeIcon("sync~spin", new vscode.ThemeColor("terminal.ansiYellow"));
+        return new vscode.ThemeIcon(
+          "sync~spin",
+          new vscode.ThemeColor("terminal.ansiYellow"),
+        );
       case "Disconnected":
-        return new vscode.ThemeIcon("error", new vscode.ThemeColor("terminal.ansiRed"));
+        return new vscode.ThemeIcon(
+          "error",
+          new vscode.ThemeColor("terminal.ansiRed"),
+        );
       case "Reconnecting":
-        return new vscode.ThemeIcon("debug-disconnect", new vscode.ThemeColor("terminal.ansiYellow"));
+        return new vscode.ThemeIcon(
+          "debug-disconnect",
+          new vscode.ThemeColor("terminal.ansiYellow"),
+        );
       default:
         return new vscode.ThemeIcon("terminal");
     }
   }
 }
 
-class EndpointTreeProvider implements vscode.TreeDataProvider<EndpointTreeItem | TerminalReferenceTreeItem> {
+class EndpointTreeProvider
+  implements
+    vscode.TreeDataProvider<EndpointTreeItem | TerminalReferenceTreeItem> {
   public static readonly viewType = "echoshell";
 
   private _onDidChangeTreeData: vscode.EventEmitter<
     EndpointTreeItem | TerminalReferenceTreeItem | undefined | null | void
-  > = new vscode.EventEmitter<EndpointTreeItem | TerminalReferenceTreeItem | undefined | null | void>();
+  > = new vscode.EventEmitter<
+    EndpointTreeItem | TerminalReferenceTreeItem | undefined | null | void
+  >();
   readonly onDidChangeTreeData: vscode.Event<
     EndpointTreeItem | TerminalReferenceTreeItem | undefined | null | void
   > = this._onDidChangeTreeData.event;
@@ -90,7 +114,7 @@ class EndpointTreeProvider implements vscode.TreeDataProvider<EndpointTreeItem |
     const terminals = this.terminalsByEndpoint.get(endpoint) || [];
     terminals.push(terminal);
     this.terminalsByEndpoint.set(endpoint, terminals);
-    this.connectionStatusByTerminal.set(terminal, "Connecting");
+    this.connectionStatusByTerminal.set(terminal, ConnectionStatus.Connecting);
     this.refresh();
   }
 
@@ -114,7 +138,9 @@ class EndpointTreeProvider implements vscode.TreeDataProvider<EndpointTreeItem |
     }
   }
 
-  getTreeItem(element: EndpointTreeItem | TerminalReferenceTreeItem): vscode.TreeItem {
+  getTreeItem(
+    element: EndpointTreeItem | TerminalReferenceTreeItem,
+  ): vscode.TreeItem {
     return element;
   }
 
@@ -126,12 +152,13 @@ class EndpointTreeProvider implements vscode.TreeDataProvider<EndpointTreeItem |
       const endpoints = getTerminalEndpoints();
       return endpoints.map(
         (endpoint) => {
-          const hasChildren = (this.terminalsByEndpoint.get(endpoint.value)?.length || 0) > 0;
+          const hasChildren =
+            (this.terminalsByEndpoint.get(endpoint.value)?.length || 0) > 0;
           return new EndpointTreeItem(
             endpoint.label,
             endpoint.value,
-            hasChildren 
-              ? vscode.TreeItemCollapsibleState.Expanded 
+            hasChildren
+              ? vscode.TreeItemCollapsibleState.Expanded
               : vscode.TreeItemCollapsibleState.None,
           );
         },
@@ -143,7 +170,8 @@ class EndpointTreeProvider implements vscode.TreeDataProvider<EndpointTreeItem |
       const terminals = this.terminalsByEndpoint.get(element.value) || [];
       return terminals.map(
         (terminal) => {
-          const status = this.connectionStatusByTerminal.get(terminal) || "Unknown";
+          const status = this.connectionStatusByTerminal.get(terminal) ||
+            "Unknown";
           return new TerminalReferenceTreeItem(
             terminal,
             status,
@@ -160,10 +188,13 @@ class EndpointTreeProvider implements vscode.TreeDataProvider<EndpointTreeItem |
 export function activate(context: vscode.ExtensionContext) {
   const persistedTerminals =
     context.globalState.get<TerminalEndpointInfo[]>("persistedTerminals") || [];
-  
+
   const provider = new EndpointTreeProvider();
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider(EndpointTreeProvider.viewType, provider)
+    vscode.window.registerTreeDataProvider(
+      EndpointTreeProvider.viewType,
+      provider,
+    ),
   );
 
   function createTrackedTerminal(info: TerminalEndpointInfo): vscode.Terminal {
@@ -295,42 +326,6 @@ export function activate(context: vscode.ExtensionContext) {
     ),
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand("echoshell.showConfigArray", async () => {
-      const items: vscode.QuickPickItem[] = [
-        ...getTerminalEndpoints(),
-        {
-          label: "ADD",
-          description: `Add Custom Endpoint`, // Optional: Add a description
-          alwaysShow: true,
-        },
-      ];
-      const selectedItem = await vscode.window.showQuickPick(items, {
-        placeHolder: "Select an item from the config array",
-      });
-
-      if (!selectedItem) {
-        return;
-      }
-      let wssURL = "";
-      if (selectedItem.label === "ADD") {
-        const userInput = await vscode.window.showInputBox({
-          prompt: "Please enter some text",
-          placeHolder: "Type here...",
-        });
-        if (!userInput) return;
-        await addTerminalEndpoint({ label: userInput, value: userInput });
-        wssURL = userInput;
-      } else {
-        wssURL = selectedItem.label;
-      }
-
-      vscode.window.showInformationMessage(
-        `Selected item: ${selectedItem.label}`,
-      );
-    }),
-  );
-
   for (const [index, info] of persistedTerminals.entries()) {
     setTimeout(() => {
       createTrackedTerminal(info);
@@ -343,40 +338,105 @@ interface TerminalEndpointInfo {
   label: string;
 }
 
+enum QuickPickAction {
+  Add = "add",
+  Edit = "edit",
+}
+
+interface EndpointQuickPickItem extends vscode.QuickPickItem {
+  kind?: vscode.QuickPickItemKind;
+  action?: QuickPickAction;
+  endpoint?: TerminalEndpointInfo;
+}
+
+async function showEndpointQuickPick(options: {
+  includeAdd?: boolean;
+  includeEdit?: boolean;
+  placeholder?: string;
+}): Promise<TerminalEndpointInfo | QuickPickAction | undefined> {
+  const items: EndpointQuickPickItem[] = [];
+
+  // Add endpoint items
+  const endpoints = getTerminalEndpoints();
+  items.push(
+    ...endpoints.map((endpoint) => ({
+      label: `$(vm-connect) ${endpoint.label || endpoint.value}`,
+      description: "",
+      endpoint: endpoint,
+    })),
+  );
+
+  // Add separator if we have actions
+  if (options.includeAdd || options.includeEdit) {
+    items.push({
+      label: "",
+      kind: vscode.QuickPickItemKind.Separator,
+    });
+  }
+
+  // Add action items
+  if (options.includeAdd) {
+    items.push({
+      label: "$(add) Add New Endpoint",
+      description: "Create and connect to a custom endpoint",
+      alwaysShow: true,
+      action: QuickPickAction.Add,
+    });
+  }
+
+  if (options.includeEdit) {
+    items.push({
+      label: "$(edit) Edit Endpoints",
+      description: "Open settings to manage endpoints",
+      alwaysShow: true,
+      action: QuickPickAction.Edit,
+    });
+  }
+
+  const selected = await vscode.window.showQuickPick(items, {
+    placeHolder: options.placeholder || "Select an endpoint",
+  });
+
+  if (!selected) {
+    return undefined;
+  }
+
+  // Handle actions
+  if (selected.action === QuickPickAction.Add) {
+    const newEndpoint = await handleAddEndpoint();
+    return newEndpoint ? newEndpoint : QuickPickAction.Add;
+  }
+
+  if (selected.action === QuickPickAction.Edit) {
+    await handleEditEndpoints();
+    return QuickPickAction.Edit;
+  }
+
+  // Return the selected endpoint
+  return selected.endpoint;
+}
+
 async function selectOrCreateEndpoint(): Promise<
   TerminalEndpointInfo | undefined
 > {
-  const items = [
-    ...getTerminalEndpoints(),
-    {
-      label: "ADD",
-      description: `Add and connect to custom endpoint`,
-      alwaysShow: true,
-    },
-    {
-      label: "EDIT",
-      description: `Open endpoint settings`,
-      alwaysShow: true,
-    },
-  ];
-  const selectedItem = await vscode.window.showQuickPick(items, {
-    placeHolder: "Select an item from the config array",
+  const result = await showEndpointQuickPick({
+    includeAdd: true,
+    includeEdit: true,
+    placeholder: "Select an endpoint or create a new one",
   });
 
-  if (!selectedItem) {
-    return;
+  // Handle the special cases
+  if (result === QuickPickAction.Edit) {
+    // User chose to edit, show picker again
+    return selectOrCreateEndpoint();
   }
-  if (selectedItem.label === "EDIT") {
-    await handleEditEndpoints();
-    return;
+
+  if (result === QuickPickAction.Add) {
+    // Add was already handled, return undefined if cancelled
+    return undefined;
   }
-  let selected = undefined;
-  if (selectedItem.label === "ADD") {
-    selected = await handleAddEndpoint();
-  } else {
-    selected = { label: selectedItem.label, value: selectedItem.value };
-  }
-  return selected;
+
+  return result as TerminalEndpointInfo | undefined;
 }
 
 function getTerminalEndpoints(): any[] {
@@ -431,22 +491,26 @@ function initWebsocket(ws: WebSocket, payload: any): Promise<void> {
   });
 }
 
-function createWebSocket(wsUrl: string, writeEmitter: vscode.EventEmitter<string>, onStatusChange?: (status: string) => void) {
+function createWebSocket(
+  wsUrl: string,
+  writeEmitter: vscode.EventEmitter<string>,
+  onStatusChange?: (status: string) => void,
+) {
   const wss = new WebSocket(wsUrl);
   wss.binaryType = "arraybuffer";
-  
+
   wss.addEventListener("open", () => {
     onStatusChange?.("Connected");
   });
-  
+
   wss.addEventListener("close", () => {
     onStatusChange?.("Disconnected");
   });
-  
+
   wss.addEventListener("error", () => {
     onStatusChange?.("Disconnected");
   });
-  
+
   wss.addEventListener("message", ({ data }: any) => {
     const { str, obj } = arrayBufferToJson(data);
     const payload = JSON.stringify(obj);
@@ -469,7 +533,10 @@ const InitPayload = {
   },
 };
 
-function PersistentPty(wsUrl: string, onStatusChange?: (status: string) => void): vscode.Pseudoterminal {
+function PersistentPty(
+  wsUrl: string,
+  onStatusChange?: (status: string) => void,
+): vscode.Pseudoterminal {
   const writeEmitter = new vscode.EventEmitter<string>();
   let log = vscode.window.createOutputChannel("echoshell-PersistentPty");
   let wss = createWebSocket(wsUrl, writeEmitter, onStatusChange);
@@ -484,23 +551,23 @@ function PersistentPty(wsUrl: string, onStatusChange?: (status: string) => void)
       try {
         await initWebsocket(wss, initPayload);
         log.appendLine(`open: ${initPayload}`);
-        onStatusChange?.("Connected");
+        onStatusChange?.(ConnectionStatus.Connected);
       } catch (err: any) {
         log.appendLine(`WebSocket error: ${err.message}`);
-        onStatusChange?.("Disconnected");
+        onStatusChange?.(ConnectionStatus.Disconnected);
       }
     };
     onOpen();
   };
   const reOpen = async () => {
     vscode.window.showInformationMessage(`Reconnecting...`);
-    onStatusChange?.("Reconnecting");
+    onStatusChange?.(ConnectionStatus.Reconnecting);
     wss = createWebSocket(wsUrl, writeEmitter, onStatusChange);
     try {
       await initWebsocket(wss, initPayload);
-      onStatusChange?.("Connected");
+      onStatusChange?.(ConnectionStatus.Connected);
     } catch (err: any) {
-      onStatusChange?.("Disconnected");
+      onStatusChange?.(ConnectionStatus.Disconnected);
     }
   };
   const close = () => {
