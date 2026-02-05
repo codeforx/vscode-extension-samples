@@ -125,12 +125,16 @@ class EndpointTreeProvider implements vscode.TreeDataProvider<EndpointTreeItem |
       // Root level - show endpoints
       const endpoints = getTerminalEndpoints();
       return endpoints.map(
-        (endpoint) =>
-          new EndpointTreeItem(
+        (endpoint) => {
+          const hasChildren = (this.terminalsByEndpoint.get(endpoint.value)?.length || 0) > 0;
+          return new EndpointTreeItem(
             endpoint.label,
             endpoint.value,
-            vscode.TreeItemCollapsibleState.Expanded,
-          ),
+            hasChildren 
+              ? vscode.TreeItemCollapsibleState.Expanded 
+              : vscode.TreeItemCollapsibleState.None,
+          );
+        },
       );
     }
 
@@ -184,13 +188,13 @@ export function activate(context: vscode.ExtensionContext) {
 
     const disposable = vscode.window.onDidCloseTerminal(
       (closed: vscode.Terminal) => {
-        if (closed.name === info.label) {
+        if (closed === terminal) {
           const idx = persistedTerminals.findIndex((t) =>
             t.label === info.label && t.value === info.value
           );
           if (idx !== -1) persistedTerminals.splice(idx, 1);
           context.globalState.update("persistedTerminals", persistedTerminals);
-          provider.unregisterTerminal(closed);
+          provider.unregisterTerminal(terminal);
           disposable.dispose();
         }
       },
@@ -215,6 +219,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "echoshell.openTerminalFromItem",
       async (item: EndpointTreeItem) => {
+        if (!item) return;
         await vscode.commands.executeCommand("echoshell.createNewTerminal", {
           label: item.label,
           value: item.value,
@@ -388,7 +393,6 @@ async function addTerminalEndpoint(newItem: any) {
     [...oldEntries, newItem],
     vscode.ConfigurationTarget.Global,
   );
-  vscode.window.showInformationMessage(`Item added: ${newItem.label}`);
 }
 
 function initWebsocket(ws: WebSocket, payload: any): Promise<void> {
