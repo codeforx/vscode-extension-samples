@@ -4,7 +4,7 @@
   "displayName": "echoshell",
   "description": "A Visual Studio Code extension that provides enhanced terminal integration, allowing users to create and manage terminal profiles, connect to WebSocket endpoints, and configure terminal settings directly from the VS Code interface.",
   "repository": "ht8ps://github.com/codiegogo/vscode-extension-samples",
-  "version": "0.0.34",
+  "version": "0.0.37",
   "icon": "icon-128.png",
   "engines": {
     "vscode": "^1.93.0"
@@ -12,7 +12,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "browser": "./out/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -27,9 +29,9 @@
     "views": {
       "echoshell": [
         {
-          "type": "webview",
           "id": "echoshell",
-          "name": "Menu"
+          "name": "Menu",
+          "type": "tree"
         }
       ]
     },
@@ -37,6 +39,7 @@
       {
         "command": "echoshell.createNewTerminal",
         "title": "Create New Terminal",
+        "icon": "$(terminal)",
         "category": "EchoShell"
       },
       {
@@ -46,12 +49,25 @@
       },
       {
         "command": "echoshell.addToConfigArray",
+        "icon": "$(plus)",
         "title": "Add to Config Array",
         "category": "EchoShell"
       },
       {
         "command": "echoshell.editConfigArray",
+        "icon": "$(edit)",
         "title": "Edit Config Array",
+        "category": "EchoShell"
+      },
+      {
+        "command": "echoshell.openTerminalFromItem",
+        "icon": "$(add)",
+        "title": "Open Terminal",
+        "category": "EchoShell"
+      },
+      {
+        "command": "echoshell.showTerminal",
+        "title": "Show Terminal",
         "category": "EchoShell"
       }
     ],
@@ -94,6 +110,30 @@
       }
     },
     "menus": {
+      "view/title": [
+        {
+          "command": "echoshell.addToConfigArray",
+          "id": "echoshell.add",
+          "group": "navigation@1"
+        },
+        {
+          "command": "echoshell.editConfigArray",
+          "id": "echoshell.edit",
+          "group": "navigation@2"
+        },
+        {
+          "command": "echoshell.createNewTerminal",
+          "id": "echoshell.new",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "echoshell.openTerminalFromItem",
+          "when": "view == echoshell && viewItem == endpoint",
+          "group": "inline@1"
+        }
+      ],
       "editor/title": [
         {
           "when": "isWeb || !isWeb",
@@ -136,6 +176,7 @@
     "@stylistic/eslint-plugin": "^2.9.0",
     "@types/node": "^20",
     "@types/vscode": "^1.93.0",
+    "@vscode/test-web": "^0.0.79",
     "eslint": "^9.13.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.16.0"

@@ -4,7 +4,7 @@ const TerminalProfileName = "EchoShell";
 const dec = new TextDecoder();
 const enc = new TextEncoder();
 
-function ab2json(arrayBuffer: ArrayBuffer): any {
+function arrayBufferToJson(arrayBuffer: ArrayBuffer): any {
   try {
     // Convert ArrayBuffer to string
     const jsonString = dec.decode(arrayBuffer);
@@ -22,93 +22,175 @@ function ab2json(arrayBuffer: ArrayBuffer): any {
   }
 }
 
-class SideOutputProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = "echoshell";
-
-  constructor(private readonly extUri: vscode.Uri) {}
-
-  async resolveWebviewView(
-    webviewView: vscode.WebviewView,
-    context: vscode.WebviewViewResolveContext,
-    _token: vscode.CancellationToken,
+class EndpointTreeItem extends vscode.TreeItem {
+  constructor(
+    public readonly label: string,
+    public readonly value: string,
+    public readonly collapsibleState: vscode.TreeItemCollapsibleState,
   ) {
-    webviewView.webview.options = {
-      enableScripts: true,
-      enableCommandUris: true,
-    };
-
-    const htmlUri = vscode.Uri.joinPath(this.extUri, "media/index.html");
-    const buffer = await vscode.workspace.fs.readFile(htmlUri);
-
-    updateEndpoints = async () => {
-      webviewView.webview.postMessage({
-        command: "updateEndpoints",
-        endpoints: await getMyConfigArray(),
-      });
-    };
-
-    webviewView.webview.html = new TextDecoder("utf-8").decode(buffer);
-    webviewView.webview.onDidReceiveMessage(
-      async (message) => {
-        switch (message.command) {
-          case "ADD":
-            await handleAdd();
-            break;
-          case "EDIT":
-            await handleEdit();
-            break;
-          case "UPDATE_ENDPOINTS":
-            await updateEndpoints();
-            break;
-          case "openTerminal":
-            await vscode.commands.executeCommand(
-              "echoshell.createNewTerminal",
-              message.endpoint,
-            );
-            break;
-          default:
-            vscode.window.showInformationMessage(
-              `Unknown command: ${message.command}`,
-            );
-        }
-      },
-    );
+    super(label || value, collapsibleState);
+    this.tooltip = value;
+    this.iconPath = new vscode.ThemeIcon("vm-connect");
+    this.contextValue = "endpoint";
   }
 }
 
-let updateEndpoints = async () => {
-  vscode.window.showInformationMessage(
-    `Updating endpoints...`,
-  );
-};
+class TerminalReferenceTreeItem extends vscode.TreeItem {
+  constructor(
+    public readonly terminal: vscode.Terminal,
+    public readonly connectionStatus: string,
+    public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+  ) {
+    super(terminal.name, collapsibleState);
+    this.tooltip = `${connectionStatus} - Click to show ${terminal.name}`;
+    this.description = connectionStatus;
+    this.iconPath = this.getIconForStatus(connectionStatus);
+    this.contextValue = "terminalReference";
+    this.command = {
+      command: "echoshell.showTerminal",
+      title: "Show Terminal",
+      arguments: [terminal],
+    };
+  }
+
+  private getIconForStatus(status: string): vscode.ThemeIcon {
+    switch (status) {
+      case "Connected":
+        return new vscode.ThemeIcon("check", new vscode.ThemeColor("terminal.ansiGreen"));
+      case "Connecting":
+        return new vscode.ThemeIcon("sync~spin", new vscode.ThemeColor("terminal.ansiYellow"));
+      case "Disconnected":
+        return new vscode.ThemeIcon("error", new vscode.ThemeColor("terminal.ansiRed"));
+      case "Reconnecting":
+        return new vscode.ThemeIcon("debug-disconnect", new vscode.ThemeColor("terminal.ansiYellow"));
+      default:
+        return new vscode.ThemeIcon("terminal");
+    }
+  }
+}
+
+class EndpointTreeProvider implements vscode.TreeDataProvider<EndpointTreeItem | TerminalReferenceTreeItem> {
+  public static readonly viewType = "echoshell";
+
+  private _onDidChangeTreeData: vscode.EventEmitter<
+    EndpointTreeItem | TerminalReferenceTreeItem | undefined | null | void
+  > = new vscode.EventEmitter<EndpointTreeItem | TerminalReferenceTreeItem | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<
+    EndpointTreeItem | TerminalReferenceTreeItem | undefined | null | void
+  > = this._onDidChangeTreeData.event;
+
+  private terminalsByEndpoint: Map<string, vscode.Terminal[]> = new Map();
+  private connectionStatusByTerminal: Map<vscode.Terminal, string> = new Map();
+
+  refresh(): void {
+    this._onDidChangeTreeData.fire();
+  }
+
+  registerTerminal(endpoint: string, terminal: vscode.Terminal): void {
+    const terminals = this.terminalsByEndpoint.get(endpoint) || [];
+    terminals.push(terminal);
+    this.terminalsByEndpoint.set(endpoint, terminals);
+    this.connectionStatusByTerminal.set(terminal, "Connecting");
+    this.refresh();
+  }
+
+  updateConnectionStatus(terminal: vscode.Terminal, status: string): void {
+    this.connectionStatusByTerminal.set(terminal, status);
+    this.refresh();
+  }
+
+  unregisterTerminal(terminal: vscode.Terminal): void {
+    this.connectionStatusByTerminal.delete(terminal);
+    for (const [endpoint, terminals] of this.terminalsByEndpoint.entries()) {
+      const index = terminals.indexOf(terminal);
+      if (index !== -1) {
+        terminals.splice(index, 1);
+        if (terminals.length === 0) {
+          this.terminalsByEndpoint.delete(endpoint);
+        }
+        this.refresh();
+        break;
+      }
+    }
+  }
+
+  getTreeItem(element: EndpointTreeItem | TerminalReferenceTreeItem): vscode.TreeItem {
+    return element;
+  }
+
+  async getChildren(
+    element?: EndpointTreeItem | TerminalReferenceTreeItem,
+  ): Promise<(EndpointTreeItem | TerminalReferenceTreeItem)[]> {
+    if (!element) {
+      // Root level - show endpoints
+      const endpoints = getTerminalEndpoints();
+      return endpoints.map(
+        (endpoint) =>
+          new EndpointTreeItem(
+            endpoint.label,
+            endpoint.value,
+            vscode.TreeItemCollapsibleState.Expanded,
+          ),
+      );
+    }
+
+    if (element instanceof EndpointTreeItem) {
+      // Child level - show terminals for this endpoint
+      const terminals = this.terminalsByEndpoint.get(element.value) || [];
+      return terminals.map(
+        (terminal) => {
+          const status = this.connectionStatusByTerminal.get(terminal) || "Unknown";
+          return new TerminalReferenceTreeItem(
+            terminal,
+            status,
+            vscode.TreeItemCollapsibleState.None,
+          );
+        },
+      );
+    }
+
+    return [];
+  }
+}
 
 export function activate(context: vscode.ExtensionContext) {
-  const saved =
-    context.globalState.get<TrackedTerminalInfo[]>("persistedTerminals") || [];
-  function createTrackedTerminal(info: TrackedTerminalInfo): vscode.Terminal {
+  const persistedTerminals =
+    context.globalState.get<TerminalEndpointInfo[]>("persistedTerminals") || [];
+  
+  const provider = new EndpointTreeProvider();
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider(EndpointTreeProvider.viewType, provider)
+  );
+
+  function createTrackedTerminal(info: TerminalEndpointInfo): vscode.Terminal {
     const terminal = vscode.window.createTerminal({
       name: info.label,
-      pty: PersistentPty(info.value),
+      pty: PersistentPty(info.value, (status: string) => {
+        provider.updateConnectionStatus(terminal, status);
+      }),
       location: vscode.TerminalLocation.Editor,
       iconPath: new vscode.ThemeIcon("terminal"),
     });
 
-    const existing = saved.find((t) =>
+    provider.registerTerminal(info.value, terminal);
+
+    const existing = persistedTerminals.find((t) =>
       t.label === info.label && t.value === info.value
     );
     if (!existing) {
-      saved.push(info);
-      context.globalState.update("persistedTerminals", saved);
+      persistedTerminals.push(info);
+      context.globalState.update("persistedTerminals", persistedTerminals);
     }
 
     const disposable = vscode.window.onDidCloseTerminal(
       (closed: vscode.Terminal) => {
         if (closed.name === info.label) {
-          const idx = saved.findIndex((t) =>
+          const idx = persistedTerminals.findIndex((t) =>
             t.label === info.label && t.value === info.value
           );
-          if (idx !== -1) saved.splice(idx, 1);
-          context.globalState.update("persistedTerminals", saved);
+          if (idx !== -1) persistedTerminals.splice(idx, 1);
+          context.globalState.update("persistedTerminals", persistedTerminals);
+          provider.unregisterTerminal(closed);
           disposable.dispose();
         }
       },
@@ -117,29 +199,43 @@ export function activate(context: vscode.ExtensionContext) {
     return terminal;
   }
 
-  const provider = new SideOutputProvider(context.extensionUri);
-  vscode.window.registerWebviewViewProvider(
-    SideOutputProvider.viewType,
-    provider,
-    { webviewOptions: { retainContextWhenHidden: false } },
-  );
-
   context.subscriptions.push(
     vscode.commands.registerCommand("echoshell.addToConfigArray", async () => {
-      await handleAdd();
+      await handleAddEndpoint();
     }),
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("echoshell.editConfigArray", async () => {
-      await handleEdit();
+      await handleEditEndpoints();
     }),
   );
 
-  // Add an event listener to trigger webview refresh when settings.json is updated
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "echoshell.openTerminalFromItem",
+      async (item: EndpointTreeItem) => {
+        await vscode.commands.executeCommand("echoshell.createNewTerminal", {
+          label: item.label,
+          value: item.value,
+        });
+      },
+    ),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "echoshell.showTerminal",
+      async (terminal: vscode.Terminal) => {
+        terminal.show();
+      },
+    ),
+  );
+
+  // Add an event listener to trigger tree refresh when settings.json is updated
   vscode.workspace.onDidChangeConfiguration((e) => {
     if (e.affectsConfiguration("echoshell.terminalEndpoints")) {
-      updateEndpoints();
+      provider.refresh();
     }
   });
 
@@ -166,8 +262,8 @@ export function activate(context: vscode.ExtensionContext) {
       "echoshell.createNewTerminal",
       async (input: any) => {
         // Use input object if provided, otherwise show input box
-        const selected: TrackedTerminalInfo | undefined =
-          input?.value && input?.label ? input : await getOrAppendURL();
+        const selected: TerminalEndpointInfo | undefined =
+          input?.value && input?.label ? input : await selectOrCreateEndpoint();
 
         if (!selected) {
           return;
@@ -197,7 +293,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("echoshell.showConfigArray", async () => {
       const items: vscode.QuickPickItem[] = [
-        ...getMyConfigArray(),
+        ...getTerminalEndpoints(),
         {
           label: "ADD",
           description: `Add Custom Endpoint`, // Optional: Add a description
@@ -218,7 +314,7 @@ export function activate(context: vscode.ExtensionContext) {
           placeHolder: "Type here...",
         });
         if (!userInput) return;
-        await addMyConfigArray({ label: userInput, value: userInput });
+        await addTerminalEndpoint({ label: userInput, value: userInput });
         wssURL = userInput;
       } else {
         wssURL = selectedItem.label;
@@ -230,23 +326,23 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
 
-  for (const [index, info] of saved.entries()) {
+  for (const [index, info] of persistedTerminals.entries()) {
     setTimeout(() => {
       createTrackedTerminal(info);
     }, 1000 * (1 + index));
   }
 }
 
-interface TrackedTerminalInfo {
+interface TerminalEndpointInfo {
   value: string;
   label: string;
 }
 
-async function getOrAppendURL(): Promise<
-  TrackedTerminalInfo | undefined
+async function selectOrCreateEndpoint(): Promise<
+  TerminalEndpointInfo | undefined
 > {
   const items = [
-    ...getMyConfigArray(),
+    ...getTerminalEndpoints(),
     {
       label: "ADD",
       description: `Add and connect to custom endpoint`,
@@ -266,24 +362,24 @@ async function getOrAppendURL(): Promise<
     return;
   }
   if (selectedItem.label === "EDIT") {
-    await handleEdit();
+    await handleEditEndpoints();
     return;
   }
   let selected = undefined;
   if (selectedItem.label === "ADD") {
-    selected = await handleAdd();
+    selected = await handleAddEndpoint();
   } else {
     selected = { label: selectedItem.label, value: selectedItem.value };
   }
   return selected;
 }
 
-function getMyConfigArray(): any[] {
+function getTerminalEndpoints(): any[] {
   const config = vscode.workspace.getConfiguration("echoshell");
   return config.get("terminalEndpoints") || [];
 }
 
-async function addMyConfigArray(newItem: any) {
+async function addTerminalEndpoint(newItem: any) {
   const config = vscode.workspace.getConfiguration("echoshell");
   const oldEntries: any[] = config.get("terminalEndpoints") ||
     [];
@@ -331,11 +427,24 @@ function initWebsocket(ws: WebSocket, payload: any): Promise<void> {
   });
 }
 
-function newWss(wsUrl: string, writeEmitter: vscode.EventEmitter<string>) {
+function createWebSocket(wsUrl: string, writeEmitter: vscode.EventEmitter<string>, onStatusChange?: (status: string) => void) {
   const wss = new WebSocket(wsUrl);
   wss.binaryType = "arraybuffer";
+  
+  wss.addEventListener("open", () => {
+    onStatusChange?.("Connected");
+  });
+  
+  wss.addEventListener("close", () => {
+    onStatusChange?.("Disconnected");
+  });
+  
+  wss.addEventListener("error", () => {
+    onStatusChange?.("Disconnected");
+  });
+  
   wss.addEventListener("message", ({ data }: any) => {
-    const { str, obj } = ab2json(data);
+    const { str, obj } = arrayBufferToJson(data);
     const payload = JSON.stringify(obj);
     // log.appendLine(`recv: ${payload}`);
     if (obj[1] === "o") {
@@ -356,10 +465,10 @@ const InitPayload = {
   },
 };
 
-function PersistentPty(wsUrl: string): vscode.Pseudoterminal {
+function PersistentPty(wsUrl: string, onStatusChange?: (status: string) => void): vscode.Pseudoterminal {
   const writeEmitter = new vscode.EventEmitter<string>();
   let log = vscode.window.createOutputChannel("echoshell-PersistentPty");
-  let wss = newWss(wsUrl, writeEmitter);
+  let wss = createWebSocket(wsUrl, writeEmitter, onStatusChange);
   let initPayload = "";
   const open = (dimensions: vscode.TerminalDimensions | undefined) => {
     initPayload = JSON.stringify({
@@ -371,16 +480,24 @@ function PersistentPty(wsUrl: string): vscode.Pseudoterminal {
       try {
         await initWebsocket(wss, initPayload);
         log.appendLine(`open: ${initPayload}`);
+        onStatusChange?.("Connected");
       } catch (err: any) {
         log.appendLine(`WebSocket error: ${err.message}`);
+        onStatusChange?.("Disconnected");
       }
     };
     onOpen();
   };
   const reOpen = async () => {
     vscode.window.showInformationMessage(`Reconnecting...`);
-    wss = newWss(wsUrl, writeEmitter);
-    await initWebsocket(wss, initPayload);
+    onStatusChange?.("Reconnecting");
+    wss = createWebSocket(wsUrl, writeEmitter, onStatusChange);
+    try {
+      await initWebsocket(wss, initPayload);
+      onStatusChange?.("Connected");
+    } catch (err: any) {
+      onStatusChange?.("Disconnected");
+    }
   };
   const close = () => {
     wss.close();
@@ -484,20 +601,37 @@ function echoPty(): vscode.Pseudoterminal {
   };
 }
 
-async function handleAdd(): Promise<
-  TrackedTerminalInfo | undefined
+async function handleAddEndpoint(): Promise<
+  TerminalEndpointInfo | undefined
 > {
-  const userInput = await vscode.window.showInputBox({
-    prompt: "Please enter some text",
-    placeHolder: "Type here...",
+  // First ask for the wss:// URL value
+  const urlValue = await vscode.window.showInputBox({
+    prompt: "Enter WebSocket URL",
+    placeHolder: "wss://example.com or ws://example.com",
+    validateInput: (value) => {
+      if (!value) {
+        return "URL cannot be empty";
+      }
+      if (!value.startsWith("wss://") && !value.startsWith("ws://")) {
+        return "URL must start with wss:// or ws://";
+      }
+      return null;
+    },
   });
-  if (!userInput) return;
-  const newItem = { label: userInput, value: userInput };
-  await addMyConfigArray(newItem);
+  if (!urlValue) return;
+
+  // Then ask for a label (optional, fallback to value)
+  const label = await vscode.window.showInputBox({
+    prompt: "Enter a label for this endpoint (optional)",
+    placeHolder: urlValue,
+  });
+
+  const newItem = { label: label || urlValue, value: urlValue };
+  await addTerminalEndpoint(newItem);
   return newItem;
 }
 
-async function handleEdit() {
+async function handleEditEndpoints() {
   await vscode.commands.executeCommand(
     "workbench.action.openSettingsJson",
     { revealSetting: { key: "echoshell.terminalEndpoints", edit: true } },
